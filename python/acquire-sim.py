@@ -3,17 +3,19 @@ import cv2
 import csv
 
 # Insert string for video or 0 for webcam
-#cap = cv2.VideoCapture('../../media/input.avi')
+#cap = cv2.VideoCapture('../../media/camera.mp4')
+#cap = cv2.VideoCapture('input.avi')
 cap = cv2.VideoCapture(0)
 
 ##############################################################
 # Variables
-# videoTime is the time of the actual video in seconds
 # cx,cy are the x and y position of the centroid
+# x,y are the x and y of the pixels
 
 cx = 0
 cy = 0
-videoTime = 0
+x = 0
+y = 0
 
 ##############################################################
 # Parameters for BackgroundSubtractorMOG
@@ -24,14 +26,13 @@ videoTime = 0
 
 history = 30
 nmixtures = 7
-backgroundRatio = .6
+backgroundRatio = .1
 noiseSigma = 12
 fgbg = cv2.bgsegm.createBackgroundSubtractorMOG(history,nmixtures,backgroundRatio,noiseSigma)
 
 while(1):
     ret, frame = cap.read()
-
-    videoTime = int(cap.get(cv2.CAP_PROP_POS_FRAMES)) / cap.get(cv2.CAP_PROP_FPS)   
+    frameCount = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
 
     # Apply the BackgroundSubtractorMOG to given frame
     fgmask = fgbg.apply(frame)
@@ -41,16 +42,16 @@ while(1):
     # Increases the size of pixels detected x5 for better contour detection
 
     fgmask = cv2.dilate(fgmask, None, iterations=5)
-    
+
     ##############################################################
     # Contours
     # Joins all continuous points along boundary having same color or intensity
     # cv2.findContours(source image, contour retrieval mode, contour approximation method)
     # RETR_EXTERNAL used to select only extreme outer contours
     # CHAIN_APPROX_SIMPLE removes redundant boundary points in order to save memory
-    
+
     cnts = cv2.findContours(fgmask.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)[-2]
-    
+
     ##############################################################
     # Centroid
     # With contours, find the centroid with moments
@@ -68,7 +69,16 @@ while(1):
     
         # Draw contours and centroid
         cv2.drawContours(frame, [c], -1, (0,255,0), 2)
-        cv2.circle(frame, (cx,cy), 5, (0, 0, 255), -1)
+        cv2.circle(frame, (cx,cy), 8, (0, 0, 255), -1)
+
+    ##############################################################
+    # Pixel Calculation
+    # Adjusts the pixels so the origin is at (0,0)
+
+    width = cap.get(3)
+    height = cap.get(4)
+    x = cx - width/2
+    y = height/2 - cy
 
     ##############################################################
     # File Output
@@ -76,7 +86,8 @@ while(1):
     
     with open('centroid.csv', 'ab') as csvfile:
         centroid = csv.writer(csvfile)
-        centroid.writerow([videoTime,cx,cy])
+        if(frameCount%15 == 0):
+            centroid.writerow([(frameCount/15)*0.5,x,y])
 
     ##############################################################
     # Display Output
@@ -84,7 +95,7 @@ while(1):
 
     cv2.imshow('Background Subtraction',fgmask)  
     cv2.imshow('Centroid Location',frame)
-
+    
     k = cv2.waitKey(30) & 0xff
     if k == 27:
         break
