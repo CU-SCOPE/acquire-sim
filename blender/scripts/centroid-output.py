@@ -2,7 +2,7 @@ import bpy
 import bpy_extras
 import csv
 
-outputfile = '/Users/Guy/Desktop/centroid-actual.csv'
+outputfile = 'centroid-actual.csv'
 
 f = open(outputfile, "w+")
 

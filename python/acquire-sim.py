@@ -1,11 +1,15 @@
 import numpy as np
 import cv2
 import csv
+import time
 
 # Insert string for video or 0 for webcam
 #cap = cv2.VideoCapture('../../media/camera.mp4')
 #cap = cv2.VideoCapture('input.avi')
 cap = cv2.VideoCapture(0)
+#cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+#out = cv2.VideoWriter('outpy.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (960,540))
 
 ##############################################################
 # Variables
@@ -24,10 +28,10 @@ y = 0
 # backgroundRatio is the background ratio
 # noiseSigma is the noise strength
 
-history = 30
-nmixtures = 7
+history = 5
+nmixtures = 5
 backgroundRatio = .1
-noiseSigma = 12
+noiseSigma = 15
 fgbg = cv2.bgsegm.createBackgroundSubtractorMOG(history,nmixtures,backgroundRatio,noiseSigma)
 
 while(1):
@@ -59,13 +63,13 @@ while(1):
     # M['m00'], M['m10'], and M['m01'] define the centroid
     
     if len(cnts) > 0:
-        # Iterate through contours (use max to reduce runtime)
-        for c in cnts:
-            # Compute the centroid
-            M = cv2.moments(c)
-            if M['m00'] != 0:
-                cx = int(M['m10']/M['m00'])
-                cy = int(M['m01']/M['m00'])
+        # Find max contour area to use as centroid
+        c = max(cnts, key = cv2.contourArea)
+        # Compute the centroid
+        M = cv2.moments(c)
+        if M['m00'] != 0:
+            cx = int(M['m10']/M['m00'])
+            cy = int(M['m01']/M['m00'])        
     
         # Draw contours and centroid
         cv2.drawContours(frame, [c], -1, (0,255,0), 2)
@@ -83,16 +87,18 @@ while(1):
     ##############################################################
     # File Output
     # Writes a CSV with Centroid locations
-    
+
     with open('centroid.csv', 'ab') as csvfile:
-        centroid = csv.writer(csvfile)
-        if(frameCount%15 == 0):
-            centroid.writerow([(frameCount/15)*0.5,x,y])
+       centroid = csv.writer(csvfile)
+       if(frameCount%15 == 0):
+           centroid.writerow([(frameCount/15)*0.5,x,y])
 
     ##############################################################
     # Display Output
     # Shows the output for Background Subtraction and Centroid Location
 
+    fgmask = cv2.resize(fgmask, (604, 340))
+    frame = cv2.resize(frame, (960, 540))
     cv2.imshow('Background Subtraction',fgmask)  
     cv2.imshow('Centroid Location',frame)
     
